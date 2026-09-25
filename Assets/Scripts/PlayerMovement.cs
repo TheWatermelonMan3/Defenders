@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 // wasd / arrows to walk hold left ctrl to crouch and walk more slowly
 // the character controller handles collisions, slopes, and steps, see the movement guide for setup
@@ -78,8 +79,15 @@ public class PlayerMovement : MonoBehaviour
         controller.slopeLimit = slopeLimit;
         controller.stepOffset = wasGrounded ? Mathf.Min(stepHeight, controller.height) : 0f;
 
+        #if ENABLE_INPUT_SYSTEM
+        Vector2 wasd = GetComponent<PlayerInput>().actions.FindAction("WASD").ReadValue<Vector2>();
+        float horizontal = wasd.x;
+        float vertical = wasd.y;
+        #else
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
+        #endif
+
         // keep diagonal movement at the same speed as walking straight
         Vector3 direction = Vector3.ClampMagnitude(new Vector3(horizontal, 0f, vertical), 1f);
         float speed = IsCrouching ? crouchSpeed : moveSpeed;
@@ -101,7 +109,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void UpdateCrouch()
     {
-        bool wantsToCrouch = Input.GetKey(crouchKey);
+        bool wantsToCrouch = false;
+        #if ENABLE_INPUT_SYSTEM
+        wantsToCrouch = GetComponent<PlayerInput>().actions.FindAction("Crouch").ReadValue<float>() > 0.1f;
+        #else
+        wantsToCrouch = Input.GetKey(crouchKey);
+        #endif
         // releasing ctrl only stands the player up if there is room overhead
         if (!wantsToCrouch && IsCrouching && !CanStand())
         {
