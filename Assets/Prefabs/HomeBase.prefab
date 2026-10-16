@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 2863668026450052134}
   - component: {fileID: 3004702881964424639}
   - component: {fileID: 3942877674844904094}
+  - component: {fileID: -8099905701322495197}
   m_Layer: 0
   m_Name: HomeBase
   m_TagString: Untagged
@@ -139,3 +140,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
   maxHealth: 5
+--- !u!114 &-8099905701322495197
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6618518418525639395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 729e1e2565e0c3b4cac3edc7aa1d0c25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Faction
+  factionType: 0
