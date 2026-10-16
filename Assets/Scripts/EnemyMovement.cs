@@ -18,8 +18,8 @@ public class EnemyMovement : MonoBehaviour
     [SerializeField] private float acceleration = 40f;
     [Tooltip("Degrees per second.")]
     [SerializeField] private float turnSpeed = 720f;
-    [Tooltip("How far from the NavMesh the enemy can start and still snap onto it.")]
-    [SerializeField] private float snapToNavMeshDistance = 2f;
+    [Tooltip("How far the enemy looks (straight down first, then all around) for the NavMesh when it spawns.")]
+    [SerializeField] private float snapToNavMeshDistance = 20f;
 
     private NavMeshAgent agent;
     private bool triedToInitAgent;
@@ -27,6 +27,14 @@ public class EnemyMovement : MonoBehaviour
 
     /// <summary>True when the enemy is currently moving with the NavMesh instead of a straight line.</summary>
     public bool IsPathfinding => agent != null && agent.enabled && agent.isOnNavMesh;
+
+    private void Start()
+    {
+        // Set up right away (the NavMesh baker runs before this), so the enemy snaps to the ground
+        // immediately instead of waiting until it has something to walk to.
+        if (usePathfinding)
+            TryGetAgent();
+    }
 
     public void MoveTowards(Vector3 destination)
     {
@@ -80,8 +88,11 @@ public class EnemyMovement : MonoBehaviour
             return false;
         triedToInitAgent = true;
 
-        if (!NavMesh.SamplePosition(transform.position, out NavMeshHit hit, snapToNavMeshDistance, NavMesh.AllAreas))
-            return false; // no NavMesh here: use straight-line movement
+        if (!FindNavMeshPoint(out Vector3 spawnPoint))
+        {
+            Debug.LogWarning($"{name}: no NavMesh within {snapToNavMeshDistance}m, using straight-line movement.", this);
+            return false;
+        }
 
         agent = GetComponent<NavMeshAgent>();
         if (agent == null)
@@ -95,9 +106,44 @@ public class EnemyMovement : MonoBehaviour
         agent.angularSpeed = turnSpeed;
         agent.stoppingDistance = 0f;
         agent.autoBraking = false;
-        agent.Warp(hit.position);
+        agent.Warp(spawnPoint);
 
         return agent.isOnNavMesh;
+    }
+
+    /// <summary>
+    /// Finds where to put the enemy on the NavMesh: the ground directly below it if there is any,
+    /// otherwise the closest point on the NavMesh in any direction.
+    /// </summary>
+    private bool FindNavMeshPoint(out Vector3 point)
+    {
+        point = transform.position;
+
+        // 1. Look straight down for ground, then find the NavMesh right there.
+        RaycastHit[] hits = Physics.RaycastAll(transform.position, Vector3.down, snapToNavMeshDistance,
+            ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (RaycastHit ground in hits)
+        {
+            if (ground.collider.transform.IsChildOf(transform))
+                continue; // our own collider
+
+            if (NavMesh.SamplePosition(ground.point, out NavMeshHit below, 1f, NavMesh.AllAreas))
+            {
+                point = below.position;
+                return true;
+            }
+            break; // landed on something that isn't walkable; fall back to searching around
+        }
+
+        // 2. Otherwise, the closest NavMesh point in any direction.
+        if (NavMesh.SamplePosition(transform.position, out NavMeshHit near, snapToNavMeshDistance, NavMesh.AllAreas))
+        {
+            point = near.position;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>Sizes the agent to match the enemy's collider so it hugs walls correctly.</summary>
